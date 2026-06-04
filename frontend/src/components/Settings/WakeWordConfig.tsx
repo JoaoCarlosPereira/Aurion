@@ -45,7 +45,7 @@ export function WakeWordConfig({
           <TextInput
             id="wakeword-engine"
             value={value.engine}
-            placeholder="porcupine"
+            placeholder="vosk"
             onChange={(engine) => onChange({ ...value, engine })}
           />
         </Field>

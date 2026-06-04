@@ -167,6 +167,31 @@ pip install -r requirements.txt --prefix="$VENV_DIR" 2>/dev/null || \
 
 success "Dependências do backend instaladas."
 
+# --- 3.5. Download do modelo Vosk --------------------------------------------
+section "3.5. Baixando modelo Vosk (português)"
+
+readonly VOSK_MODEL_DIR="${BACKEND_DIR}/vosk-model-small-pt-0.3"
+readonly VOSK_MODEL_URL="https://alphacephei.com/vosk/models/vosk-model-small-pt-0.3.zip"
+readonly VOSK_MODEL_ZIP="/tmp/vosk-model-small-pt-0.3.zip"
+
+if [[ -d "$VOSK_MODEL_DIR" && -f "${VOSK_MODEL_DIR}/mfcc.conf" ]]; then
+    warn "Modelo Vosk já existe em ${VOSK_MODEL_DIR}"
+    info "Pulando download."
+else
+    info "Baixando modelo Vosk para português (~31MB)..."
+    mkdir -p /tmp
+    wget -q --show-progress -O "$VOSK_MODEL_ZIP" "$VOSK_MODEL_URL"
+    mkdir -p "$VOSK_MODEL_DIR"
+    unzip -q "$VOSK_MODEL_ZIP" -d "$VOSK_MODEL_DIR" --junk-paths
+    rm -f "$VOSK_MODEL_ZIP"
+    if [[ -f "${VOSK_MODEL_DIR}/mfcc.conf" ]]; then
+        success "Modelo Vosk baixado e extraído."
+    else
+        error "Falha ao extrair modelo Vosk."
+        exit 1
+    fi
+fi
+
 # --- 4. Dependências do Frontend ---------------------------------------------
 section "4. Configurando Frontend"
 

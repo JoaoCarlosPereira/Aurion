@@ -12,7 +12,7 @@ A Aurion escuta o ambiente, detecta a palavra **"Aurion"** como gatilho, process
 
 | Recurso | Descrição |
 |---------|-----------|
-| 🎙️ Ativação por Wake Word | Detecção contínua da palavra "Aurion" com Porcupine |
+| 🎙️ Ativação por Wake Word | Detecção contínua da palavra "Aurion" com Vosk (offline) |
 | 🗣️ Comando por Voz | Speech-to-Text com whisper.cpp (modelo base Q4, pt-BR) |
 | ⌨️ Comando por Texto | Interface web para digitar comandos |
 | 🔊 Resposta por Voz | Text-to-Speech com edge-tts (vozes pt-BR naturais) |
@@ -119,7 +119,7 @@ Aurion/
 
 ### Instalação Automatizada (Ubuntu/Debian)
 
-O script `install.sh` configura **todo o ambiente automaticamente**: dependências do sistema, ambiente virtual Python, dependências do frontend, configuração inicial, serviço systemd e firewall.
+O script `install.sh` configura **todo o ambiente automaticamente**: dependências do sistema, ambiente virtual Python, dependências do frontend, modelo Vosk (pt-BR), configuração inicial, serviço systemd e firewall.
 
 ```bash
 # Baixar e executar o instalador (requer sudo)
@@ -132,11 +132,12 @@ O script faz:
 1. Instala dependências do sistema (Python, Node.js, PortAudio, build tools)
 2. Verifica versões mínimas (Python ≥3.11, Node.js ≥18)
 3. Cria ambiente virtual Python com todas as dependências do backend
-4. Instala dependências do frontend (npm)
-5. Gera `config.json` a partir do exemplo
-6. Configura serviço systemd para execução como serviço em produção
-7. Configura firewall UFW (libera portas 8000 e 5173)
-8. Realiza health check automático
+4. Baixa o modelo Vosk para português (~31MB)
+5. Instala dependências do frontend (npm)
+6. Gera `config.json` a partir do exemplo
+7. Configura serviço systemd para execução como serviço em produção
+8. Configura firewall UFW (libera portas 8000 e 5173)
+9. Realiza health check automático
 
 Após a instalação, edite o arquivo de configuração:
 
@@ -334,7 +335,7 @@ python -m pytest tests/test_latency.py -v --tb=no
 | Backend | Python 3.11+, FastAPI, aiosqlite, Pydantic v2 |
 | STT | whisper.cpp (modelo base Q4, pt-BR) |
 | TTS | edge-tts (vozes pt-BR nativas) |
-| Wake Word | Porcupine (Picovoice) |
+| Wake Word | Vosk (offline, sem API key) |
 | Frontend | React 18+, TypeScript, Vite, Tailwind CSS 4, Zustand |
 | Comunicação | REST API + WebSocket |
 | Banco de dados | SQLite (aiosqlite, totalmente assíncrono) |

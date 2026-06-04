@@ -177,7 +177,7 @@ async def test_atualizacao_parcial_merge(manager: ConfigManager):
     # O wake_word atualizado antes deve permanecer.
     assert cfg.wake_word.sensitivity == 0.9
     # E o engine do wake_word não foi sobrescrito.
-    assert cfg.wake_word.engine == "porcupine"
+    assert cfg.wake_word.engine == "vosk"
     assert cfg.tts.voice == "pt-BR-AntonioNeural"
     # Demais valores do TTS preservados.
     assert cfg.tts.engine == "edge-tts"

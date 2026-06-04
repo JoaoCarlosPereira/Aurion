@@ -123,7 +123,7 @@ pactl list sinks short
 ```
 
 - `chunk_size`: Em Linux com PulseAudio/PipeWire, valores de 1024-2048 funcionam bem
-- `sample_rate`: 16000 é padrão para STT (whisper.cpp, Porcupine)
+- `sample_rate`: 16000 é padrão para STT (whisper.cpp, Vosk)
 - `channels`: 1 (mono) para captura, reduz processamento
 
 ### Solução de Problemas
@@ -217,7 +217,7 @@ portaudio --version 2>/dev/null || echo "Verificar instalação manual"
 ## Configurações Comuns a Todos os SO
 
 ### sample_rate
-- **16000 Hz**: Padrão para STT (whisper.cpp, Porcupine)
+- **16000 Hz**: Padrão para STT (whisper.cpp, Vosk)
 - **22050 Hz**: Boa qualidade para TTS
 - **44100 Hz**: Qualidade CD (não recomendado para STT)
 

@@ -129,7 +129,7 @@ npm run build
     }
   },
   "wake_word": {
-    "engine": "porcupine",
+    "engine": "vosk",
     "sensitivity": 0.5,
     "keyword": "",
     "keyword_path": "",

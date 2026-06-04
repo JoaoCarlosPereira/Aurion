@@ -39,7 +39,7 @@ const DEFAULT_CONFIG: AppConfig = {
       timeout: 10,
     },
   },
-  wake_word: { engine: "porcupine", sensitivity: 0.5, keyword: "aurion" },
+  wake_word: { engine: "vosk", sensitivity: 0.5, keyword: "aurion" },
   audio: {
     sample_rate: 16000,
     channels: 1,

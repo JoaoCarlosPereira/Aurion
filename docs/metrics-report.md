@@ -209,7 +209,7 @@ O pipeline completo (wake word → STT → Hermes → TTS) tem latências estima
 | Critério do PRD | Status | Evidência |
 |---|---|---|
 | Pipeline < 5s | ✅ | Benchmarks confirmados com mocks |
-| Wake word < 1s | ✅ | Porcupine em tempo real |
+| Wake word < 1s | ✅ | Vosk em tempo real |
 | Interface responsiva | ✅ | Tailwind + breakpoints |
 | 24/7 operação | ✅ | Listening Service com graceful shutdown |
 | Testes unitários | ✅ | ~134 testes passando |

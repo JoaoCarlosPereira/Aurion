@@ -74,9 +74,9 @@ class TTSConfig(BaseModel):
 
 
 class WakeWordConfig(BaseModel):
-    """Configuração do motor de detecção de wake word (Porcupine)."""
+    """Configuração do motor de detecção de wake word (Vosk)."""
 
-    engine: str = "porcupine"
+    engine: str = "vosk"
     # Sensibilidade de detecção entre 0.0 e 1.0 (padrão 0.5 para PT-BR).
     sensitivity: float = Field(default=0.5, ge=0.0, le=1.0)
     keyword: str = "aurion"
