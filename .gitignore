@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+*.so
+.venv/
+venv/
+env/
+.venv/
+
+# Python - packages
+*.whl
+
+# Node.js
+node_modules/
+frontend/dist/
+frontend/build/
+.DS_Store
+*.log
+
+# Configuration (not checked in)
+config.json
+backend/config.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+*.pyc
+migrations/
+*.sqlite
+*.db
