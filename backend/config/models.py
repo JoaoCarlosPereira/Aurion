@@ -80,6 +80,9 @@ class WakeWordConfig(BaseModel):
     # Sensibilidade de detecção entre 0.0 e 1.0 (padrão 0.5 para PT-BR).
     sensitivity: float = Field(default=0.5, ge=0.0, le=1.0)
     keyword: str = "aurion"
+    keyword_path: str | None = None
+    access_key: str | None = None
+    wake_word_timeout: int = Field(default=10, ge=1)
 
 
 class AudioConfig(BaseModel):
@@ -164,6 +167,9 @@ class WakeWordConfigUpdate(BaseModel):
     engine: str | None = None
     sensitivity: float | None = Field(default=None, ge=0.0, le=1.0)
     keyword: str | None = None
+    keyword_path: str | None = None
+    access_key: str | None = None
+    wake_word_timeout: int | None = Field(default=None, ge=1)
 
 
 class AudioConfigUpdate(BaseModel):

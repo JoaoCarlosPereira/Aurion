@@ -51,8 +51,8 @@ async def lifespan(app: FastAPI):
         hermes = HermesBridge(cfg.hermes)
         tts = TTSService(cfg.tts)
 
-        repo = __import__("backend.db.repo", fromlist=["InteractionRepository"]).InteractionRepository(
-            __import__("backend.db.database", fromlist=["get_database"]).get_database()
+        repo = __import__("db.repo", fromlist=["InteractionRepository"]).InteractionRepository(
+            __import__("db.database", fromlist=["get_database"]).get_database()
         )
 
         listening_config = ListeningConfig(
@@ -115,6 +115,14 @@ app = FastAPI(
     description="Assistente pessoal por voz — servidor local + web app",
     version="0.1.0",
     lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(api_router, prefix="/api")
