@@ -15,7 +15,7 @@ def _make_db():
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
     conn.executescript(_SCHEMA)
-    conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", ("trigger_word", "aurion"))
+    conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", ("trigger_word", "ermes"))
     conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", ("tts_rate", "160"))
     conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", ("tts_volume", "1.0"))
     conn.commit()
@@ -128,6 +128,6 @@ def test_default_settings_exist(db):
         tts_rate = db.execute("SELECT value FROM settings WHERE key = ?", ("tts_rate",)).fetchone()
         tts_vol = db.execute("SELECT value FROM settings WHERE key = ?", ("tts_volume",)).fetchone()
 
-    assert trigger is not None and trigger["value"] == "aurion"
+    assert trigger is not None and trigger["value"] == "ermes"
     assert tts_rate is not None and tts_rate["value"] == "160"
     assert tts_vol is not None and tts_vol["value"] == "1.0"

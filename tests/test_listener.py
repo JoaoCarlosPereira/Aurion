@@ -20,32 +20,35 @@ from aurion.listener import (
 
 
 def test_is_wake_word_exact_and_substring():
-    assert is_wake_word("aurion", "aurion")
-    assert is_wake_word("oi aurion", "aurion")
-    assert is_wake_word("ario", "aurion")
-    assert is_wake_word("áudio que horas", "aurion")
-    assert is_wake_word("orion", "aurion")
-    assert is_wake_word("rau", "aurion")
-    assert is_wake_word("au", "aurion")
-    assert is_wake_word("aur", "aurion")
-    assert not is_wake_word("john parquelândia", "aurion")
-    assert not is_wake_word("estou pronta para ajudar", "aurion")
+    assert is_wake_word("ermes", "ermes")
+    assert is_wake_word("érmes", "ermes")
+    assert is_wake_word("oi ermes", "ermes")
+    assert is_wake_word("hermes", "ermes")
+    assert is_wake_word("ermes que horas", "ermes")
+    assert is_wake_word("harmes", "ermes")
+    assert is_wake_word("er", "ermes")
+    assert is_wake_word("erm", "ermes")
+    assert is_wake_word("erme", "ermes")
+    assert not is_wake_word("john parquelândia", "ermes")
+    assert not is_wake_word("estou pronta para ajudar", "ermes")
 
 
 def test_extract_command_tail():
-    assert extract_command_tail("aurion qual é a hora", "aurion") == "qual e a hora"
-    assert extract_command_tail("áudio que horas", "aurion") == "que horas"
-    assert extract_command_tail("áudio que", "aurion") == "que"
-    assert extract_command_tail("oi aurion liga a luz", "aurion") == "oi liga a luz"
-    assert extract_command_tail("aurion", "aurion") == ""
+    assert extract_command_tail("ermes qual é a hora", "ermes") == "qual e a hora"
+    assert extract_command_tail("érmes que horas", "ermes") == "que horas"
+    assert extract_command_tail("hermes que horas", "ermes") == "que horas"
+    assert extract_command_tail("ermes que", "ermes") == "que"
+    assert extract_command_tail("oi ermes liga a luz", "ermes") == "oi liga a luz"
+    assert extract_command_tail("ermes", "ermes") == ""
 
 
 def test_is_exit_phrase():
-    assert is_exit_phrase("aurion pare", "aurion")
-    assert is_exit_phrase("áudio pare", "aurion")
-    assert is_exit_phrase("aurion parar", "aurion")
-    assert not is_exit_phrase("aurion qual a hora", "aurion")
-    assert not is_exit_phrase("pare", "aurion")
+    assert is_exit_phrase("ermes pare", "ermes")
+    assert is_exit_phrase("érmes pare", "ermes")
+    assert is_exit_phrase("hermes pare", "ermes")
+    assert is_exit_phrase("ermes parar", "ermes")
+    assert not is_exit_phrase("ermes qual a hora", "ermes")
+    assert not is_exit_phrase("pare", "ermes")
 
 
 def test_parse_queue_item():
@@ -85,48 +88,48 @@ def test_is_likely_echo():
 
 
 def test_command_after_oi_strips_repeated_wake_alias():
-    """Pós-Oi, 'áudio que horas' não deve ser descartado como wake word."""
-    t2 = "áudio que horas"
-    cmd_part = extract_command_tail(t2, "aurion")
+    """Pós-Oi, 'ermes que horas' não deve ser descartado como wake word."""
+    t2 = "ermes que horas"
+    cmd_part = extract_command_tail(t2, "ermes")
     assert cmd_part == "que horas"
-    assert is_wake_word(t2, "aurion")  # frase inteira ainda é wake
+    assert is_wake_word(t2, "ermes")  # frase inteira ainda é wake
     assert cmd_part  # mas o pedido extraído deve ir para a fila
 
 
 def test_wake_word_detected(command_queue):
-    """Wake word 'aurion' é detectado corretamente."""
-    listener = VoiceListener(command_queue, trigger_word="aurion")
-    assert listener.trigger_word == "aurion"
+    """Wake word 'ermes' (Érmes) é detectado corretamente."""
+    listener = VoiceListener(command_queue, trigger_word="ermes")
+    assert listener.trigger_word == "ermes"
 
 
 def test_command_placed_in_queue(command_queue):
     """Comando após wake word é colocado na fila."""
     from aurion.listener import VoiceListener
 
-    listener = VoiceListener(command_queue, trigger_word="aurion")
-    command_queue.put("aurion, hello")
+    listener = VoiceListener(command_queue, trigger_word="ermes")
+    command_queue.put("ermes, hello")
     assert not command_queue.empty()
     cmd = command_queue.get(timeout=1)
-    assert "aurion" in cmd.lower()
+    assert "ermes" in cmd.lower()
 
 
 def test_false_positive_no_trigger(command_queue):
     """Falso positivo (outra palavra) não dispara escuta."""
     from aurion.listener import VoiceListener
 
-    listener = VoiceListener(command_queue, trigger_word="aurion")
-    # Simulate: user says something that doesn't contain "aurion"
+    listener = VoiceListener(command_queue, trigger_word="ermes")
+    # Simulate: user says something that doesn't contain "ermes"
     # In wake mode, it should not put anything in queue
     command_queue.put("hello friend")
     assert command_queue.qsize() == 1
-    assert "aurion" not in command_queue.get().lower()
+    assert "ermes" not in command_queue.get().lower()
 
 
 def test_start_creates_daemon_thread(command_queue):
     """start() inicia thread daemon."""
     from aurion.listener import VoiceListener
 
-    listener = VoiceListener(command_queue, trigger_word="aurion")
+    listener = VoiceListener(command_queue, trigger_word="ermes")
     # Don't actually start the thread since there's no microphone
     # Just verify the thread attribute is None before start
     assert listener._thread is None
@@ -137,7 +140,7 @@ def test_stop_before_start(command_queue):
     """stop() pode ser chamado sem start() sem crash."""
     from aurion.listener import VoiceListener
 
-    listener = VoiceListener(command_queue, trigger_word="aurion")
+    listener = VoiceListener(command_queue, trigger_word="ermes")
     listener.stop()  # Should not raise
 
 

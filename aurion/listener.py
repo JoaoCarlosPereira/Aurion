@@ -23,9 +23,8 @@ _TOKEN_SIMILARITY = 0.80
 _PHRASE_SIMILARITY = 0.85
 _DEFAULT_WAKE_ALIASES = frozenset(
     {
-        "audio", "orion", "ario", "auriao", "horion", "ariom", "alloy",
-        "rau", "raú", "aron", "auron", "arion", "auri", "aury", "aurum",
-        "au", "aur", "auri",
+        "hermes", "hermess", "herme", "harmes", "airmes", "hemes",
+        "herms", "ormes", "ermis", "ermess", "er", "erm", "erme",
     }
 )
 _EXIT_WORDS = frozenset({"pare", "parar", "stop", "cancela", "cancelar", "sair", "desliga"})
@@ -91,7 +90,7 @@ def is_wake_word(text: str, trigger_word: str) -> bool:
         return True
     if SequenceMatcher(None, trigger, norm).ratio() >= _PHRASE_SIMILARITY:
         return True
-    # Google STT costuma devolver só o começo da wake word ("au", "aur")
+    # Google STT costuma devolver só o começo da wake word ("er", "erm")
     if (
         2 <= len(norm) <= _WAKE_PREFIX_MAX_LEN
         and trigger.startswith(norm)
@@ -104,7 +103,7 @@ def is_wake_word(text: str, trigger_word: str) -> bool:
 
 
 def is_exit_phrase(text: str, trigger_word: str) -> bool:
-    """Detecta 'Aurion pare' (ou alias + pare/parar/cancela)."""
+    """Detecta 'Érmes pare' (ou alias + pare/parar/cancela)."""
     tokens = set(_tokenize(text))
     if not tokens & _EXIT_WORDS:
         return False
@@ -234,7 +233,7 @@ class VoiceListener:
     def __init__(
         self,
         command_queue: queue.Queue,
-        trigger_word: str = "aurion",
+        trigger_word: str = "ermes",
         mic_index: int | None = None,
         db_path: str | None = None,
         conversation_context: object | None = None,

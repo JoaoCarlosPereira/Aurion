@@ -114,7 +114,7 @@ Variáveis de ambiente (arquivo `.env`):
 |----------|-----------|--------|
 | `HERMES_BASE_URL` | URL da API do Hermes Agent | `http://localhost:8080` |
 | `AURION_PORT` | Porta do servidor | `8080` |
-| `TRIGGER_WORD` | Palavra de ativação | `aurion` |
+| `TRIGGER_WORD` | Palavra de ativação (pronúncia: **Érmes**) | `ermes` |
 | `TTS_VOICE_ID` | ID da voz Kokoro | _(seleção automática)_ |
 | `KOKORO_BASE_URL` | URL da API Kokoro TTS | _(vazio / mesmo host)_ |
 | `WHISPER_BASE_URL` | URL de transcrição Whisper | _(vazio / mesmo host)_ |
@@ -215,5 +215,5 @@ A suite cobre todos os módulos com mais de 73 casos de teste, incluindo detecç
 
 - **Local-first**: todo o processamento de voz e armazenamento de dados ocorrem localmente por padrão. Apenas a inferência LLM requer um Hermes Agent externo.
 - **Privacidade**: nenhum dado sai da máquina, a menos que o Hermes Agent esteja configurado para um serviço externo.
-- **Palavra de ativação**: o padrão é "aurion", com correspondência aproximada — suporta aliases como "ario", "orion", "audio", além de correspondência parcial por prefixo ("au", "aur").
-- **Modo conversa**: após a palavra de ativação, o Aurion entra em modo multi-turno. Para sair, diga "aurion pare" ou "aurion parar".
+- **Palavra de ativação**: o padrão é **Érmes** (configurado como `ermes`), com correspondência aproximada — suporta aliases como "hermes", "harmes", "airmes", além de correspondência parcial por prefixo ("er", "erm", "erme").
+- **Modo conversa**: após a palavra de ativação, o Aurion entra em modo multi-turno. Para sair, diga "Érmes pare" ou "Érmes parar".

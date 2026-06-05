@@ -276,7 +276,7 @@ def _init_components():
                f"Serviços descobertos: {list(discovered.keys())}")
 
     # VoiceListener (início adiado no lifespan para não captar a saudação inicial)
-    trigger_word = os.getenv("TRIGGER_WORD", "aurion")
+    trigger_word = os.getenv("TRIGGER_WORD", "ermes")
     _voice_context = VoiceConversationContext(
         on_start=lambda: create_conversation(_db_path, "voice"),
         on_end=lambda conv_id: end_conversation(_db_path, conv_id),
@@ -509,7 +509,7 @@ async def test_voice(req: VoiceTestRequest):
 async def get_config():
     """Retorna configurações atuais."""
     config = {
-        "trigger_word": os.getenv("TRIGGER_WORD", "aurion"),
+        "trigger_word": os.getenv("TRIGGER_WORD", "ermes"),
         "hermes_url": _hermes_client.api_url if _hermes_client else None,  # type: ignore[union-attr]
         "port": _find_free_port(),
     }

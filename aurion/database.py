@@ -93,7 +93,7 @@ def init_db(db_path: str = DEFAULT_DB_PATH) -> sqlite3.Connection:
         _migrate_db(conn)
 
     # Seed default settings
-    _upsert_setting(db_path, "trigger_word", "aurion")
+    _upsert_setting(db_path, "trigger_word", "ermes")
     _upsert_setting(db_path, "tts_rate", "160")
     _upsert_setting(db_path, "tts_volume", "1.0")
 
