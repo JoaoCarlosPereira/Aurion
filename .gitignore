@@ -1,6 +1,10 @@
 # Environment
 .env
 
+# Local runtime data
+aurion/aurion.db
+models/
+
 # Python
 __pycache__/
 *.py[cod]

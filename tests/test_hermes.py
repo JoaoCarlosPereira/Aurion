@@ -70,6 +70,38 @@ async def test_send_command_retry_once(client):
 
 
 @pytest.mark.asyncio
+async def test_format_for_tts(client):
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "choices": [{"message": {"content": "São quinze horas e trinta minutos."}}],
+        "usage": {"prompt_tokens": 20, "completion_tokens": 8},
+    }
+    mock_resp.raise_for_status.return_value = None
+
+    mock_async_client = AsyncMock()
+    mock_async_client.post = AsyncMock(return_value=mock_resp)
+    mock_async_client.__aenter__ = AsyncMock(return_value=mock_async_client)
+    mock_async_client.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("aurion.hermes.httpx.AsyncClient", return_value=mock_async_client):
+        result = await client.format_for_tts("São 15:30.")
+
+    assert result == "São quinze horas e trinta minutos."
+    payload = mock_async_client.post.call_args.kwargs["json"]
+    assert payload["messages"][0]["role"] == "system"
+    assert "TTS" in payload["messages"][0]["content"]
+    assert "15:30" in payload["messages"][1]["content"]
+
+
+@pytest.mark.asyncio
+async def test_format_for_tts_disabled(client):
+    with patch("aurion.hermes.os.getenv", return_value="false"):
+        result = await client.format_for_tts("Texto original.")
+    assert result == "Texto original."
+
+
+@pytest.mark.asyncio
 async def test_custom_timeout():
     c = HermesClient(api_url="http://localhost:9999/v1", timeout=60.0)
     assert c.timeout == 60.0

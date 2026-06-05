@@ -29,7 +29,12 @@ _play_lock = threading.Lock()
 
 def _get_greeting_text() -> str:
     """Retorna a saudação fixa de apresentação."""
-    return "Olá! Eu sou Aurion e estou pronta para ajudar."
+    text_file = _SOUNDS_DIR / "saudacao.txt"
+    if text_file.exists():
+        saved = text_file.read_text(encoding="utf-8").strip()
+        if saved:
+            return saved
+    return "Olá! Eu sou Érmes e estou pronta para ajudar."
 
 
 def get_or_generate_greeting() -> str:

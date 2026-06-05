@@ -92,10 +92,10 @@ def init_db(db_path: str = DEFAULT_DB_PATH) -> sqlite3.Connection:
         conn.executescript(_SCHEMA)
         _migrate_db(conn)
 
-    # Seed default settings
-    _upsert_setting(db_path, "trigger_word", "ermes")
-    _upsert_setting(db_path, "tts_rate", "160")
-    _upsert_setting(db_path, "tts_volume", "1.0")
+    # Seed default settings (não sobrescreve valores já salvos)
+    _seed_setting_if_missing(db_path, "trigger_word", os.getenv("TRIGGER_WORD", "hermes"))
+    _seed_setting_if_missing(db_path, "tts_rate", "160")
+    _seed_setting_if_missing(db_path, "tts_volume", "1.0")
 
     return sqlite3.connect(db_path)
 
@@ -358,6 +358,17 @@ def get_setting(db_path: str, key: str) -> str | None:
 def set_setting(db_path: str, key: str, value: str) -> None:
     """Insere ou atualiza uma configuração (UPSERT)."""
     _upsert_setting(db_path, key, value)
+
+
+def _seed_setting_if_missing(db_path: str, key: str, value: str) -> None:
+    with _connect(db_path) as conn:
+        row = conn.execute("SELECT 1 FROM settings WHERE key = ?", (key,)).fetchone()
+        if row is None:
+            conn.execute(
+                "INSERT INTO settings (key, value) VALUES (?, ?)",
+                (key, value),
+            )
+            conn.commit()
 
 
 def _upsert_setting(db_path: str, key: str, value: str) -> None:

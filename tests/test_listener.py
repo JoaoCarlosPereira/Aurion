@@ -63,7 +63,7 @@ def test_parse_queue_item():
 def test_is_system_phrase_echo():
     assert is_system_phrase_echo("certo um momento por favor")
     assert is_system_phrase_echo("estou pronta para ajudar")
-    assert is_system_phrase_echo("olá eu sou aurion e estou pronta para ajudar")
+    assert is_system_phrase_echo("olá eu sou ermes e estou pronta para ajudar")
     assert not is_system_phrase_echo("qual a previsao do tempo")
     assert not is_system_phrase_echo("maroon 5")
 

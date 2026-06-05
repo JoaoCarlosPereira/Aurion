@@ -52,6 +52,11 @@ from aurion.tts import TTSService
 from aurion.transcriptions import list_transcriptions
 
 logger = logging.getLogger("aurion.api")
+
+VOICE_ERROR_TTS = (
+    "Desculpe, não consegui obter uma resposta agora. "
+    "Tente novamente em instantes."
+)
 load_dotenv()
 
 # Configure logging for aurion logger
@@ -153,6 +158,28 @@ def _resolve_conversation_id(source: str, voice_mode: bool) -> int:
     return conv_id
 
 
+async def _prepare_tts_text(response_text: str) -> str:
+    """Pede ao Hermes texto otimizado para Kokoro TTS em pt-BR."""
+    try:
+        return await _hermes_client.format_for_tts(response_text)  # type: ignore[union-attr]
+    except HermesError as exc:
+        logger.warning("Otimização TTS via Hermes falhou: %s — usando original", exc)
+        return response_text
+    except Exception as exc:
+        logger.warning("Erro ao otimizar TTS: %s — usando original", exc)
+        return response_text
+
+
+async def _finish_voice_response(*, speak_text: str | None = None) -> None:
+    """Reproduz TTS (se houver) e libera o microfone do listener."""
+    try:
+        if speak_text and _tts_service:
+            await asyncio.to_thread(_tts_service.speak_blocking, speak_text)
+    finally:
+        if _listener:
+            _listener.notify_response_done()  # noqa: SLF001
+
+
 async def _command_worker():
     """Worker em background que consome a fila de comandos de voz."""
     global _hermes_client, _tts_service
@@ -188,30 +215,32 @@ async def _command_worker():
                 if voice_mode and _voice_context and _voice_context.active:
                     _voice_context.append_turn(command, result["response"])
 
+                tts_text = await _prepare_tts_text(result["response"])
+
                 if _listener and voice_mode:
-                    _listener.set_last_response(result["response"])  # noqa: SLF001
+                    _listener.set_last_response(tts_text)  # noqa: SLF001
 
                 if _tts_service:
                     if wait_response:
                         try:
-                            await asyncio.to_thread(
-                                _tts_service.speak_blocking, result["response"]
-                            )
+                            await _finish_voice_response(speak_text=tts_text)
                             logger.info(
                                 "TTS concluído (conversa): %s",
-                                result["response"][:40],
+                                tts_text[:40],
                             )
-                        finally:
-                            if _listener:
-                                _listener.notify_response_done()  # noqa: SLF001
+                        except Exception as tts_exc:
+                            logger.error("Falha no TTS da resposta: %s", tts_exc)
+                            await _finish_voice_response()
                     else:
                         t = threading.Thread(
                             target=_tts_service.speak,
-                            args=(result["response"],),
+                            args=(tts_text,),
                             daemon=True,
                         )
                         t.start()
-                        logger.info("TTS agendado (voice): %s", result["response"][:40])
+                        logger.info("TTS agendado (voice): %s", tts_text[:40])
+                elif wait_response:
+                    await _finish_voice_response()
 
             except HermesError as exc:
                 insert_command(
@@ -221,12 +250,12 @@ async def _command_worker():
                 )
                 insert_log(_db_path, "ERROR", "voice", f"Hermes error: {exc}")
                 logger.error("Hermes error no comando '%s': %s", command, exc)
-                if wait_response and _listener:
-                    _listener.notify_response_done()  # noqa: SLF001
+                if wait_response:
+                    await _finish_voice_response(speak_text=VOICE_ERROR_TTS)
             except Exception as exc:
                 logger.error("Erro processando comando de voz '%s': %s", command, exc)
-                if wait_response and _listener:
-                    _listener.notify_response_done()  # noqa: SLF001
+                if wait_response:
+                    await _finish_voice_response(speak_text=VOICE_ERROR_TTS)
 
         except queue.Empty:
             continue
@@ -276,7 +305,7 @@ def _init_components():
                f"Serviços descobertos: {list(discovered.keys())}")
 
     # VoiceListener (início adiado no lifespan para não captar a saudação inicial)
-    trigger_word = os.getenv("TRIGGER_WORD", "ermes")
+    trigger_word = get_setting(_db_path, "trigger_word") or os.getenv("TRIGGER_WORD", "hermes")
     _voice_context = VoiceConversationContext(
         on_start=lambda: create_conversation(_db_path, "voice"),
         on_end=lambda conv_id: end_conversation(_db_path, conv_id),
@@ -364,12 +393,13 @@ async def execute_command(req: CommandRequest):
             conversation_id=conv_id,
         )
         insert_log(_db_path, "INFO", "api", f"Comando executado → ID {cmd_id}")
+        tts_text = await _prepare_tts_text(result["response"])
         # TTS em background (não bloqueia a resposta HTTP)
         t = threading.Thread(
-            target=_tts_service.speak, args=(result["response"],), daemon=True
+            target=_tts_service.speak, args=(tts_text,), daemon=True
         )
         t.start()
-        logger.info("TTS agendado: %s", result["response"][:40])
+        logger.info("TTS agendado: %s", tts_text[:40])
         return CommandResponse(
             status=result["status"], response=result["response"],
             source=req.source, timestamp=datetime.now(),
@@ -509,7 +539,11 @@ async def test_voice(req: VoiceTestRequest):
 async def get_config():
     """Retorna configurações atuais."""
     config = {
-        "trigger_word": os.getenv("TRIGGER_WORD", "ermes"),
+        "trigger_word": (
+            _listener.trigger_word
+            if _listener
+            else get_setting(_db_path, "trigger_word") or os.getenv("TRIGGER_WORD", "hermes")
+        ),
         "hermes_url": _hermes_client.api_url if _hermes_client else None,  # type: ignore[union-attr]
         "port": _find_free_port(),
     }
@@ -521,7 +555,7 @@ async def update_config(req: ConfigUpdateRequest):
     """Atualiza configurações."""
     set_setting(_db_path, req.key, req.value)
     if req.key == "trigger_word":
-        # Update listener trigger word
+        os.environ["TRIGGER_WORD"] = req.value
         if _listener:
             _listener.trigger_word = req.value
     return {"status": "ok", "key": req.key, "value": req.value}

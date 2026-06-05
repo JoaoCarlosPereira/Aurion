@@ -24,9 +24,13 @@ _PHRASE_SIMILARITY = 0.85
 _DEFAULT_WAKE_ALIASES = frozenset(
     {
         "hermes", "hermess", "herme", "harmes", "airmes", "hemes",
-        "herms", "ormes", "ermis", "ermess", "er", "erm", "erme",
+        "herms", "helmes", "elmes",
+        "ermes", "ermess", "erme", "ermis", "ermess", "er", "erm", "ormes",
+        # Transcrições comuns do Google STT (pt-BR) para "Hermes"/"Érmes"
+        "emes", "irmes", "irmas", "ames", "emess",
     }
 )
+_POST_TTS_MIC_DELAY_SEC = float(os.getenv("VOICE_POST_TTS_MIC_DELAY", "0.5"))
 _EXIT_WORDS = frozenset({"pare", "parar", "stop", "cancela", "cancelar", "sair", "desliga"})
 _ECHO_SIMILARITY = float(os.getenv("VOICE_ECHO_SIMILARITY", "0.55"))
 _RESPONSE_WAIT_SEC = float(os.getenv("VOICE_RESPONSE_WAIT_SEC", "600"))
@@ -59,6 +63,13 @@ def _wake_aliases() -> frozenset[str]:
         part = _normalize(part)
         if part:
             aliases.add(part)
+    # Google STT (pt-BR) no microfone USB costuma ouvir "Hermes" como sons de "Aurion"
+    aliases.update(
+        {
+            "aurio", "ario", "orion", "aurion", "auron", "arion", "horion",
+            "rau", "aron", "auri", "au",
+        }
+    )
     return frozenset(aliases)
 
 
@@ -66,11 +77,51 @@ def _tokenize(text: str) -> list[str]:
     return re.findall(r"\w+", _normalize(text), flags=re.UNICODE)
 
 
+def _fuzzy_wake_match(a: str, b: str, threshold: float) -> bool:
+    if not a or not b:
+        return False
+    if a == b:
+        return True
+    return SequenceMatcher(None, a, b).ratio() >= threshold
+
+
 def _is_wake_token(word: str, trigger: str, aliases: frozenset[str]) -> bool:
     if word == trigger or word in aliases:
         return True
-    if SequenceMatcher(None, trigger, word).ratio() >= _TOKEN_SIMILARITY:
+    if _fuzzy_wake_match(word, trigger, _TOKEN_SIMILARITY):
         return True
+    for alias in aliases:
+        if _fuzzy_wake_match(word, alias, _TOKEN_SIMILARITY):
+            return True
+    return False
+
+
+def _text_matches_wake(norm: str, trigger: str, aliases: frozenset[str]) -> bool:
+    if not norm or not trigger:
+        return False
+    if trigger in norm:
+        return True
+    compact = norm.replace(" ", "")
+    if compact == trigger or compact in aliases:
+        return True
+    if _fuzzy_wake_match(compact, trigger, _PHRASE_SIMILARITY):
+        return True
+    for alias in aliases:
+        if _fuzzy_wake_match(compact, alias, _PHRASE_SIMILARITY):
+            return True
+    if norm == trigger:
+        return True
+    if _fuzzy_wake_match(norm, trigger, _PHRASE_SIMILARITY):
+        return True
+    # Google STT costuma devolver só o começo da wake word ("er", "erm", "her")
+    if (
+        2 <= len(compact) <= _WAKE_PREFIX_MAX_LEN
+        and trigger.startswith(compact)
+    ):
+        return True
+    for word in _tokenize(norm):
+        if _is_wake_token(word, trigger, aliases):
+            return True
     return False
 
 
@@ -80,26 +131,61 @@ def is_wake_word(text: str, trigger_word: str) -> bool:
     norm = _normalize(text)
     if not norm or not trigger:
         return False
-    aliases = _wake_aliases()
+    return _text_matches_wake(norm, trigger, _wake_aliases())
 
-    if trigger in norm:
-        return True
-    if norm.replace(" ", "") == trigger:
-        return True
-    if norm == trigger:
-        return True
-    if SequenceMatcher(None, trigger, norm).ratio() >= _PHRASE_SIMILARITY:
-        return True
-    # Google STT costuma devolver só o começo da wake word ("er", "erm")
-    if (
-        2 <= len(norm) <= _WAKE_PREFIX_MAX_LEN
-        and trigger.startswith(norm)
-    ):
-        return True
-    for word in _tokenize(text):
-        if _is_wake_token(word, trigger, aliases):
-            return True
-    return False
+
+def _google_transcripts(recognizer, audio) -> list[str]:
+    """Retorna transcrições primária e alternativas do Google STT (pt-BR + en-US)."""
+    import speech_recognition as sr
+
+    seen: set[str] = set()
+    transcripts: list[str] = []
+    languages = os.getenv("WAKE_STT_LANGUAGES", "pt-BR,en-US").split(",")
+
+    for lang in languages:
+        lang = lang.strip()
+        if not lang:
+            continue
+        try:
+            result = recognizer.recognize_google(audio, language=lang, show_all=True)
+        except sr.UnknownValueError:
+            continue
+        except sr.RequestError as exc:
+            logger.warning("Google STT (%s) indisponível: %s", lang, exc)
+            continue
+
+        batch: list[str] = []
+        if isinstance(result, str):
+            batch = [result.strip().lower()]
+        elif isinstance(result, dict):
+            for alt in result.get("alternative", []):
+                if isinstance(alt, dict):
+                    raw = alt.get("transcript", "")
+                    text = raw.strip().lower()
+                    if text:
+                        batch.append(text)
+
+        for text in batch:
+            if text not in seen:
+                seen.add(text)
+                transcripts.append(text)
+
+    return transcripts
+
+
+def _find_wake_match(
+    transcripts: list[str],
+    trigger_word: str,
+    accumulated: str,
+) -> tuple[bool, str, str]:
+    """Procura wake word na transcrição atual, alternativas STT e fragmentos acumulados."""
+    candidates = list(transcripts)
+    if accumulated:
+        candidates.append(accumulated)
+    for text in candidates:
+        if is_wake_word(text, trigger_word):
+            return True, text, (transcripts[0] if transcripts else text)
+    return False, "", transcripts[0] if transcripts else ""
 
 
 def is_exit_phrase(text: str, trigger_word: str) -> bool:
@@ -144,8 +230,10 @@ _SYSTEM_ECHO_FRAGMENTS = (
     "certo um momento",
     "um momento por favor",
     "estou pronta para ajudar",
-    "eu sou aurion",
-    "sou aurion",
+    "eu sou ermes",
+    "sou ermes",
+    "eu sou hermes",
+    "sou hermes",
 )
 
 
@@ -233,7 +321,7 @@ class VoiceListener:
     def __init__(
         self,
         command_queue: queue.Queue,
-        trigger_word: str = "ermes",
+        trigger_word: str = "hermes",
         mic_index: int | None = None,
         db_path: str | None = None,
         conversation_context: object | None = None,
@@ -338,6 +426,105 @@ class VoiceListener:
         self.stop()
         if was_running:
             self.start()
+
+    def _activate_wake(
+        self,
+        wake_text: str,
+        mic_index: int,
+        recognizer,
+        *,
+        primary: str = "",
+    ) -> None:
+        """Entra em modo conversa após detecção da wake word."""
+        from aurion.greeting import play_oi
+
+        self._clear_wake_parts()
+        logger.info(
+            "Wake word detectada em: '%s'%s",
+            wake_text,
+            f" (STT primário: '{primary}')" if primary and wake_text != primary else "",
+        )
+        tail = extract_command_tail(wake_text, self.trigger_word)
+
+        play_oi(blocking=True)
+        logger.info("Reproduzindo confirmação 'Oi'")
+        time.sleep(_OI_PLAYBACK_DELAY)
+
+        self._run_conversation_mode(mic_index, recognizer, initial_command=tail)
+        logger.info("Reiniciando sessão de microfone após conversa")
+
+    def _listen_wake_vosk(self, mic_index: int, recognizer) -> bool:
+        """Loop de wake word offline via Vosk. Retorna True se encerrou sessão após conversa."""
+        from aurion.transcriptions import insert_transcription
+        from aurion.wakeword_vosk import VoskWakeDetector
+
+        detector = VoskWakeDetector(self.trigger_word, mic_index)
+        if not detector.available:
+            return False
+
+        logger.info(
+            "Microfone pronto (índice %s) — Vosk offline aguardando '%s'",
+            mic_index,
+            self.trigger_word,
+        )
+
+        was_waiting_tts = False
+        idle_reads = 0
+        try:
+            while self._running:
+                if self._in_conversation:
+                    time.sleep(0.2)
+                    continue
+
+                if not self._ensure_mic_ready():
+                    was_waiting_tts = True
+                    time.sleep(0.2)
+                    continue
+
+                if was_waiting_tts:
+                    was_waiting_tts = False
+                    detector.reset()
+                    time.sleep(_POST_TTS_MIC_DELAY_SEC)
+
+                text = detector.listen_chunk()
+                if detector.mic_open_failed:
+                    logger.warning("Vosk: microfone incompatível — fallback Google STT")
+                    return False
+
+                if not text:
+                    idle_reads += 1
+                    continue
+
+                idle_reads = 0
+                logger.info("Vosk reconheceu: '%s'", text)
+
+                if self._db_path:
+                    try:
+                        insert_transcription(self._db_path, text, "wake")
+                    except Exception as db_err:
+                        logger.warning("Falha ao salvar transcrição: %s", db_err)
+
+                if not is_wake_word(text, self.trigger_word):
+                    if is_spurious_transcript(text, self._last_response_text):
+                        logger.info("Ignorado (eco/fala do sistema): '%s'", text)
+                    else:
+                        logger.info(
+                            "Ignorado (sem wake word '%s'): '%s'",
+                            self.trigger_word,
+                            text,
+                        )
+                    continue
+
+                if self._last_response_text and is_likely_echo(text, self._last_response_text):
+                    logger.info("Ignorado (eco da última resposta): '%s'", text)
+                    continue
+
+                detector.close()
+                self._activate_wake(text, mic_index, recognizer)
+                return True
+        finally:
+            detector.close()
+        return False
 
     def _listen_loop(self) -> None:
         while self._running:
@@ -578,6 +765,17 @@ class VoiceListener:
             self.trigger_word,
         )
 
+        wake_engine = os.getenv("WAKE_ENGINE", "auto").lower()
+        if wake_engine != "google":
+            from aurion.wakeword_vosk import vosk_available
+
+            if vosk_available() and self._listen_wake_vosk(mic_index, recognizer):
+                return
+            if wake_engine == "vosk":
+                logger.error("WAKE_ENGINE=vosk mas Vosk não pôde escutar o microfone")
+                return
+            logger.info("Usando Google STT para wake word (fallback)")
+
         consecutive_errors = 0
         was_waiting_tts = False
 
@@ -605,10 +803,18 @@ class VoiceListener:
                         phrase_time_limit=_WAKE_PHRASE_LIMIT,
                     )
                 consecutive_errors = 0
-                transcript = (
-                    recognizer.recognize_google(audio, language="pt-BR").strip().lower()
-                )
-                logger.info("Reconhecido: '%s'", transcript)
+                transcripts = _google_transcripts(recognizer, audio)
+                if not transcripts:
+                    raise sr.UnknownValueError()
+                transcript = transcripts[0]
+                if len(transcripts) > 1:
+                    logger.info(
+                        "Reconhecido: '%s' (alternativas: %s)",
+                        transcript,
+                        transcripts[1:],
+                    )
+                else:
+                    logger.info("Reconhecido: '%s'", transcript)
 
                 if self._db_path:
                     try:
@@ -616,11 +822,10 @@ class VoiceListener:
                     except Exception as db_err:
                         logger.warning("Falha ao salvar transcrição: %s", db_err)
 
-                combined = self._accumulate_wake_text(transcript)
-                wake_match = is_wake_word(transcript, self.trigger_word) or is_wake_word(
-                    combined, self.trigger_word
+                accumulated = self._accumulate_wake_text(transcript)
+                wake_match, wake_text, primary = _find_wake_match(
+                    transcripts, self.trigger_word, accumulated
                 )
-                wake_text = combined if is_wake_word(combined, self.trigger_word) else transcript
 
                 if wake_match:
                     if self._last_response_text and is_likely_echo(
@@ -631,22 +836,9 @@ class VoiceListener:
                             wake_text,
                         )
                         continue
-                    self._clear_wake_parts()
-                    logger.info(
-                        "Wake word detectada em: '%s'%s",
-                        wake_text,
-                        f" (parcial: '{transcript}')" if wake_text != transcript else "",
+                    self._activate_wake(
+                        wake_text, mic_index, recognizer, primary=primary
                     )
-                    tail = extract_command_tail(wake_text, self.trigger_word)
-
-                    play_oi(blocking=True)
-                    logger.info("Reproduzindo confirmação 'Oi'")
-                    time.sleep(_OI_PLAYBACK_DELAY)
-
-                    self._run_conversation_mode(
-                        mic_index, recognizer, initial_command=tail
-                    )
-                    logger.info("Reiniciando sessão de microfone após conversa")
                     return
 
                 if is_spurious_transcript(transcript, self._last_response_text):
