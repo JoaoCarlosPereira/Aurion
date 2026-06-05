@@ -1,93 +1,93 @@
-# 🧠 Aurion — Voice-Controlled AI Assistant Framework
+# 🧠 Aurion — Framework de Assistente de IA por Voz
 
-**Aurion** is a modular, local-first personal assistant framework built in Python. It continuously listens for a wake word via microphone, enters multi-turn voice conversations, routes commands to an external LLM agent (Hermes), and responds through high-quality text-to-speech (Kokoro). It exposes a FastAPI REST API and a web dashboard for remote monitoring and manual command entry.
-
----
-
-## 🚀 Features
-
-- 🎤 **Continuous voice listening** — wake word detection with fuzzy matching, conversation mode, echo suppression
-- 🧠 **External LLM agent** — communicates with the Hermes Agent via OpenAI-compatible API (plug any compatible backend)
-- 🔊 **Kokoro TTS** — high-quality voice synthesis with automatic text splitting for long responses
-- 🔧 **6 built-in tools** — time lookup, web search (DuckDuckGo), OCR, screenshot, network scan, matrix mode
-- 🌐 **REST API** — 20+ endpoints for commands, history, status, logs, voice management, audio device configuration
-- 📡 **mDNS service discovery** — auto-detects local services (Hermes, Kokoro, Whisper, Ollama)
-- 💾 **SQLite persistence** — stores commands, conversations, logs, settings, and transcriptions
-- 🔒 **Single-instance enforcement** — prevents multiple instances from running simultaneously
-- 🎛 **Web dashboard** — Pac-Man themed interface for remote interaction and monitoring
-- ✅ **Comprehensive test suite** — 73+ test cases across 10 test files
+**Aurion** é um framework modular de assistente pessoal local-first, escrito em Python. Escuta continuamente a palavra de ativação pelo microfone, entra em conversas de voz com múltiplos turnos, encaminha comandos para um agente LLM externo (Hermes) e responde com síntese de voz de alta qualidade (Kokoro). Expõe uma API REST FastAPI e um painel web para monitoramento remoto e envio manual de comandos.
 
 ---
 
-## 🏗 Architecture
+## 🚀 Funcionalidades
+
+- 🎤 **Escuta contínua por voz** — detecção de palavra de ativação com correspondência aproximada, modo de conversa e supressão de eco
+- 🧠 **Agente LLM externo** — comunicação com o Hermes Agent via API compatível com OpenAI (conecte qualquer backend compatível)
+- 🔊 **Kokoro TTS** — síntese de voz de alta qualidade com divisão automática de texto para respostas longas
+- 🔧 **6 ferramentas integradas** — horário, busca web (DuckDuckGo), OCR, captura de tela, varredura de rede e modo matrix
+- 🌐 **API REST** — mais de 20 endpoints para comandos, histórico, status, logs, gerenciamento de voz e configuração de dispositivos de áudio
+- 📡 **Descoberta de serviços mDNS** — detecta automaticamente serviços locais (Hermes, Kokoro, Whisper, Ollama)
+- 💾 **Persistência SQLite** — armazena comandos, conversas, logs, configurações e transcrições
+- 🔒 **Instância única** — impede a execução simultânea de múltiplas instâncias
+- 🎛 **Painel web** — interface com tema Pac-Man para interação remota e monitoramento
+- ✅ **Suite de testes abrangente** — mais de 73 casos de teste em 10 arquivos
+
+---
+
+## 🏗 Arquitetura
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        Aurion Service                       │
+│                        Serviço Aurion                       │
 │                                                             │
 │  ┌──────────────┐   ┌──────────────┐   ┌────────────────┐  │
-│  │  Voice       │   │  Command     │   │  TTS           │  │
-│  │  Listener    │──▶│  Queue       │──▶│  (Kokoro)      │  │
+│  │  Listener    │   │  Fila de     │   │  TTS           │  │
+│  │  de Voz      │──▶│  Comandos    │──▶│  (Kokoro)      │  │
 │  │  (thread)    │   │  (async)     │   │  (thread)      │  │
 │  └──────────────┘   └──────────────┘   └────────────────┘  │
 │        │                    │                                │
 │        │                    ▼                                │
 │        │            ┌──────────────┐                         │
+│        │            │  Cliente     │                         │
 │        │            │  Hermes      │                         │
-│        │            │  Client      │                         │
 │        │            │  (httpx)     │                         │
 │        │            └──────┬───────┘                         │
 │        │                   │                                 │
 │        ▼                   ▼                                 │
 │  ┌──────────────┐   ┌──────────────┐                         │
-│  │  Audio       │   │  SQLite      │                         │
-│  │  Devices     │   │  Database    │                         │
-│  │  (PyAudio)   │   │  (commands,  │                         │
+│  │  Dispositivos│   │  Banco       │                         │
+│  │  de Áudio    │   │  SQLite      │                         │
+│  │  (PyAudio)   │   │  (comandos,  │                         │
 │  │              │   │   logs,      │                         │
-│  │              │   │   settings)  │                         │
+│  │              │   │   configs)   │                         │
 │  └──────────────┘   └──────────────┘                         │
 │                                                             │
 │  ┌──────────────────────────────────────────────────────┐   │
-│  │              FastAPI Server (uvicorn)                 │   │
-│  │  REST API + Static Web Dashboard                      │   │
+│  │              Servidor FastAPI (uvicorn)               │   │
+│  │  API REST + Painel Web Estático                       │   │
 │  └──────────────────────────────────────────────────────┘   │
 │                                                             │
 │  ┌──────────────┐   ┌──────────────────┐                    │
-│  │  Service     │   │  Instance Lock   │                    │
-│  │  Discovery   │   │  (fcntl)         │                    │
-│  │  (mDNS)      │   │                  │                    │
+│  │  Descoberta  │   │  Lock de         │                    │
+│  │  de Serviços │   │  Instância       │                    │
+│  │  (mDNS)      │   │  (fcntl)         │                    │
 │  └──────────────┘   └──────────────────┘                    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📁 Project Structure
+## 📁 Estrutura do Projeto
 
 ```
-Jarvis/
-├── aurion/                 # Modular assistant framework
-│   ├── __init__.py         # Package metadata
-│   ├── server.py           # FastAPI server + REST endpoints
-│   ├── listener.py         # VoiceListener thread (wake word + conversation)
-│   ├── tts.py              # TTSService (Kokoro engine)
+Aurion/
+├── aurion/                 # Framework modular do assistente
+│   ├── __init__.py         # Metadados do pacote
+│   ├── server.py           # Servidor FastAPI + endpoints REST
+│   ├── listener.py         # Thread VoiceListener (palavra de ativação + conversa)
+│   ├── tts.py              # TTSService (motor Kokoro)
 │   ├── hermes.py           # HermesClient + VoiceConversationContext
-│   ├── database.py         # SQLite CRUD layer
-│   ├── discovery.py        # mDNS service auto-discovery
-│   ├── greeting.py         # Greeting audio generation & playback
-│   ├── transcriptions.py   # Audio transcription storage
-│   ├── audio_devices.py    # Microphone/speaker device management
-│   ├── instance_lock.py    # Single-instance enforcement
-│   ├── tools/              # LangChain tools
-│   │   ├── time.py         # get_time(city) — 26 cities
+│   ├── database.py         # Camada CRUD SQLite
+│   ├── discovery.py        # Auto-descoberta de serviços mDNS
+│   ├── greeting.py         # Geração e reprodução de áudio de saudação
+│   ├── transcriptions.py   # Armazenamento de transcrições de áudio
+│   ├── audio_devices.py    # Gerenciamento de microfone e alto-falante
+│   ├── instance_lock.py    # Garantia de instância única
+│   ├── tools/              # Ferramentas LangChain
+│   │   ├── time.py         # get_time(city) — 26 cidades
 │   │   ├── duckduckgo.py   # duckduckgo_search_tool(query)
 │   │   ├── OCR.py          # read_text_from_latest_image()
 │   │   ├── screenshot.py   # take_screenshot()
 │   │   ├── arp_scan.py     # arp_scan_terminal()
 │   │   └── matrix.py       # matrix_mode()
-│   └── sounds/             # Generated greeting audio files
-│   └── static/             # Web dashboard (HTML, CSS, JS)
-├── tests/                  # pytest test suite (73+ tests)
+│   └── sounds/             # Arquivos de áudio de saudação gerados
+│   └── static/             # Painel web (HTML, CSS, JS)
+├── tests/                  # Suite pytest (73+ testes)
 │   ├── conftest.py
 │   ├── test_listener.py
 │   ├── test_database.py
@@ -101,118 +101,119 @@ Jarvis/
 │   └── test_tools.py
 ├── requirements.txt
 ├── pytest.ini
-└── .env                    # Configuration file
+└── .env                    # Arquivo de configuração
 ```
 
 ---
 
-## ⚙️ Configuration
+## ⚙️ Configuração
 
-Environment variables (`.env` file):
+Variáveis de ambiente (arquivo `.env`):
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `HERMES_BASE_URL` | Hermes Agent API URL | `http://localhost:8080` |
-| `AURION_PORT` | Server port | `8080` |
-| `TRIGGER_WORD` | Wake word | `aurion` |
-| `TTS_VOICE_ID` | Kokoro voice ID | _(auto-select)_ |
-| `KOKORO_BASE_URL` | Kokoro TTS API URL | _(empty / same host)_ |
-| `WHISPER_BASE_URL` | Whisper transcription URL | _(empty / same host)_ |
+| Variável | Descrição | Padrão |
+|----------|-----------|--------|
+| `HERMES_BASE_URL` | URL da API do Hermes Agent | `http://localhost:8080` |
+| `AURION_PORT` | Porta do servidor | `8080` |
+| `TRIGGER_WORD` | Palavra de ativação | `aurion` |
+| `TTS_VOICE_ID` | ID da voz Kokoro | _(seleção automática)_ |
+| `KOKORO_BASE_URL` | URL da API Kokoro TTS | _(vazio / mesmo host)_ |
+| `WHISPER_BASE_URL` | URL de transcrição Whisper | _(vazio / mesmo host)_ |
 
-Voice listener tuning (optional):
+Ajustes do listener de voz (opcional):
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `VOICE_UTTERANCE_SILENCE_SEC` | Silence threshold for end of utterance | `1.0` |
-| `VOICE_WAKE_PHRASE_LIMIT` | Max wake word transcript length | `15` |
-| `VOICE_ECHO_SIMILARITY` | Echo detection similarity threshold | `0.80` |
+| Variável | Descrição | Padrão |
+|----------|-----------|--------|
+| `VOICE_UTTERANCE_SILENCE_SEC` | Limiar de silêncio para fim da fala | `1.0` |
+| `VOICE_WAKE_PHRASE_LIMIT` | Tamanho máximo da transcrição da palavra de ativação | `15` |
+| `VOICE_ECHO_SIMILARITY` | Limiar de similaridade para detecção de eco | `0.80` |
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Primeiros Passos
 
-### 1. Install dependencies
+### 1. Instalar dependências
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Set up external services
+### 2. Configurar serviços externos
 
-Aurion depends on external services that must be available on your network:
+O Aurion depende de serviços externos que devem estar disponíveis na rede:
 
-- **Hermes Agent** — LLM backend (OpenAI-compatible API, default port `8080`)
-- **Kokoro TTS** — Text-to-speech synthesis (default port `8000`)
-- **Optional**: Whisper ASR (`8001`), Ollama (`11434`)
+- **Hermes Agent** — backend LLM (API compatível com OpenAI, porta padrão `8080`)
+- **Kokoro TTS** — síntese de voz (porta padrão `8000`)
+- **Opcional**: Whisper ASR (`8001`), Ollama (`11434`)
 
-Aurion auto-discovers these services via mDNS (zeroconf). If not on the same network, configure them manually via `.env`.
+O Aurion descobre esses serviços automaticamente via mDNS (zeroconf). Se não estiverem na mesma rede, configure manualmente no `.env`.
 
-### 3. Run the service
+### 3. Executar o serviço
 
 ```bash
 python -m aurion.server
 ```
 
-On startup, Aurion will:
-1. Acquire an instance lock (prevents double-running)
-2. Initialize the database, audio devices, and all components
-3. Play the greeting audio
-4. Start the voice listener thread
-5. Launch the FastAPI server
+Na inicialização, o Aurion irá:
+
+1. Adquirir o lock de instância (impede execução duplicada)
+2. Inicializar o banco de dados, dispositivos de áudio e todos os componentes
+3. Reproduzir o áudio de saudação
+4. Iniciar a thread do listener de voz
+5. Subir o servidor FastAPI
 
 ---
 
-## 🌐 REST API
+## 🌐 API REST
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/command` | POST | Send a command to Hermes, get response, trigger TTS |
-| `/api/conversations` | GET | List conversations with message history |
-| `/api/conversations/{id}` | GET | Get a specific conversation |
-| `/api/history` | GET | List commands with date/source filters |
-| `/api/history/{id}` | GET | Get a specific command detail |
-| `/api/status` | GET | Server status, listening state, service health |
-| `/api/logs` | GET | Logs with level/component filters |
-| `/api/voices` | GET | List available TTS voices |
-| `/api/voices/{id}` | PUT | Set default voice |
-| `/api/voices/test` | POST | Test a voice with audio sample |
-| `/api/config` | GET/POST | Get/update configuration |
-| `/api/listen/start` | POST | Start voice listening |
-| `/api/listen/stop` | POST | Stop voice listening |
-| `/api/listen/restart` | POST | Restart voice listening |
-| `/api/audio/devices` | GET | List all microphones and speakers |
-| `/api/audio/microphone` | POST | Set default microphone |
-| `/api/audio/speaker` | POST | Set default speaker |
-| `/api/transcriptions` | GET | List all audio transcriptions |
-| `/` | GET | Web dashboard or status JSON |
+| Endpoint | Método | Descrição |
+|----------|--------|-----------|
+| `/api/command` | POST | Envia comando ao Hermes, obtém resposta e aciona TTS |
+| `/api/conversations` | GET | Lista conversas com histórico de mensagens |
+| `/api/conversations/{id}` | GET | Obtém uma conversa específica |
+| `/api/history` | GET | Lista comandos com filtros de data e origem |
+| `/api/history/{id}` | GET | Obtém detalhes de um comando específico |
+| `/api/status` | GET | Status do servidor, estado de escuta e saúde dos serviços |
+| `/api/logs` | GET | Logs com filtros de nível e componente |
+| `/api/voices` | GET | Lista vozes TTS disponíveis |
+| `/api/voices/{id}` | PUT | Define a voz padrão |
+| `/api/voices/test` | POST | Testa uma voz com amostra de áudio |
+| `/api/config` | GET/POST | Obtém/atualiza configuração |
+| `/api/listen/start` | POST | Inicia a escuta por voz |
+| `/api/listen/stop` | POST | Para a escuta por voz |
+| `/api/listen/restart` | POST | Reinicia a escuta por voz |
+| `/api/audio/devices` | GET | Lista todos os microfones e alto-falantes |
+| `/api/audio/microphone` | POST | Define o microfone padrão |
+| `/api/audio/speaker` | POST | Define o alto-falante padrão |
+| `/api/transcriptions` | GET | Lista todas as transcrições de áudio |
+| `/` | GET | Painel web ou JSON de status |
 
 ---
 
-## 🧪 Tests
+## 🧪 Testes
 
 ```bash
 pytest
 ```
 
-The test suite covers all modules with 73+ test cases, including wake word detection, database CRUD, Hermes client, TTS, REST endpoints, service discovery, and more.
+A suite cobre todos os módulos com mais de 73 casos de teste, incluindo detecção de palavra de ativação, CRUD do banco, cliente Hermes, TTS, endpoints REST, descoberta de serviços e mais.
 
 ---
 
-## 🛠 Built With
+## 🛠 Tecnologias
 
-- **FastAPI** + **uvicorn** — REST API server
-- **httpx** — Async HTTP client for Hermes
-- **SpeechRecognition** + **PyAudio** — Microphone input
-- **Kokoro** — Text-to-speech synthesis
-- **python-zeroconf** — mDNS service discovery
-- **SQLite** — Local data persistence
-- **pytest** + **pytest-asyncio** — Test framework
+- **FastAPI** + **uvicorn** — servidor de API REST
+- **httpx** — cliente HTTP assíncrono para o Hermes
+- **SpeechRecognition** + **PyAudio** — entrada de microfone
+- **Kokoro** — síntese de voz
+- **python-zeroconf** — descoberta de serviços mDNS
+- **SQLite** — persistência local de dados
+- **pytest** + **pytest-asyncio** — framework de testes
 
 ---
 
-## 📝 Notes
+## 📝 Observações
 
-- **Local-first**: All voice processing and data storage happen locally by default. Only the LLM inference requires an external Hermes Agent.
-- **Privacy**: No data leaves the machine unless the Hermes Agent is configured to an external service.
-- **Wake word**: Default is "aurion" with fuzzy matching — supports aliases like "ario", "orion", "audio", plus partial prefix matching ("au", "aur").
-- **Conversation mode**: After wake word, Aurion enters multi-turn mode. Exit by saying "aurion pare" or "aurion parar".
+- **Local-first**: todo o processamento de voz e armazenamento de dados ocorrem localmente por padrão. Apenas a inferência LLM requer um Hermes Agent externo.
+- **Privacidade**: nenhum dado sai da máquina, a menos que o Hermes Agent esteja configurado para um serviço externo.
+- **Palavra de ativação**: o padrão é "aurion", com correspondência aproximada — suporta aliases como "ario", "orion", "audio", além de correspondência parcial por prefixo ("au", "aur").
+- **Modo conversa**: após a palavra de ativação, o Aurion entra em modo multi-turno. Para sair, diga "aurion pare" ou "aurion parar".
