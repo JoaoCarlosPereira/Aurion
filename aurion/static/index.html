@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="description" content="Aurion — Assistente Pessoal Framework" />
+    <meta name="author" content="Aurion Team" />
+    <title>Aurion — Assistente Pessoal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css" rel="stylesheet" />
+    <link href="/static/css/styles.css" rel="stylesheet" />
+    <link href="/static/css/responsive-fixes.css" rel="stylesheet" />
+    <style>
+        body.pacman-tech-theme .dashboard-card {
+            background: rgba(7, 15, 28, 0.85) !important;
+            border: 1px solid rgba(124, 231, 255, 0.12) !important;
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            backdrop-filter: blur(14px);
+        }
+        .status-dot {
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-dot.online { background: #34d399; box-shadow: 0 0 8px rgba(52,211,153,0.6); }
+        .status-dot.offline { background: #ff4d6d; box-shadow: 0 0 8px rgba(255,77,109,0.6); }
+        .status-dot.warning { background: #ffb703; box-shadow: 0 0 8px rgba(255,183,3,0.6); }
+        .log-container {
+            max-height: 300px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.3);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+        .log-entry { padding: 4px 0; border-bottom: 1px solid rgba(124,231,255,0.05); }
+        .log-entry .level-info { color: #34d399; }
+        .log-entry .level-warning { color: #ffb703; }
+        .log-entry .level-error { color: #ff4d6d; }
+        .command-input-group { position: relative; }
+        .command-input-group .send-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 5;
+        }
+        .history-table { max-height: 500px; overflow-y: auto; }
+        .conversation-card {
+            background: rgba(0,0,0,0.25);
+            border: 1px solid rgba(124,231,255,0.1);
+            border-radius: 1rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .conversation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(124,231,255,0.08);
+        }
+        .conversation-messages { display: flex; flex-direction: column; gap: 0.6rem; }
+        .chat-bubble {
+            max-width: 85%;
+            padding: 0.6rem 0.85rem;
+            border-radius: 0.85rem;
+            font-size: 0.9rem;
+            line-height: 1.45;
+        }
+        .chat-bubble.user {
+            align-self: flex-end;
+            background: rgba(52,211,255,0.12);
+            border: 1px solid rgba(52,211,255,0.2);
+        }
+        .chat-bubble.assistant {
+            align-self: flex-start;
+            background: rgba(255,209,102,0.08);
+            border: 1px solid rgba(255,209,102,0.15);
+        }
+        .chat-meta {
+            display: block;
+            font-size: 0.72rem;
+            color: rgba(216,231,255,0.55);
+            margin-bottom: 0.25rem;
+        }
+        .uptime-badge { font-size: 0.85rem; }
+        .pulse-animation { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .response-text {
+            background: rgba(52,211,255,0.08);
+            border-left: 3px solid #34d3ff;
+            padding: 0.75rem 1rem;
+            border-radius: 0 0.5rem 0.5rem 0;
+            margin-top: 0.75rem;
+        }
+        #responseArea { min-height: 60px; }
+    </style>
+</head>
+<body class="d-flex flex-column h-100 pacman-tech-theme">
+    <canvas id="pacman-background" aria-hidden="true"></canvas>
+
+    <main class="flex-shrink-0">
+        <!-- Navbar -->
+        <nav class="navbar navbar-expand-lg navbar-light py-3">
+            <div class="container px-5">
+                <a class="navbar-brand" href="#">
+                    <span class="fw-bolder text-gradient">AURION</span>
+                    <small class="text-muted ms-2" style="font-size:0.7rem;">v0.1.0</small>
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ms-auto mb-2 mb-lg-0 small fw-bolder">
+                        <li class="nav-item"><a class="nav-link active" href="#">Dashboard</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#history">Histórico</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#logs">Logs</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container px-5 py-4">
+            <!-- Status Cards -->
+            <div class="row g-4 mb-4">
+                <div class="col-md-4">
+                    <div class="dashboard-card text-center">
+                        <i class="bi bi-mic text-primary fs-1 mb-3"></i>
+                        <h5 class="fw-bolder mb-2">Escuta Ativa</h5>
+                        <div id="listeningStatus">
+                            <span class="status-dot offline"></span>
+                            <span class="text-muted">Inativo</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="dashboard-card text-center">
+                        <i class="bi bi-robot text-primary fs-1 mb-3"></i>
+                        <h5 class="fw-bolder mb-2">Hermes Agent</h5>
+                        <div id="hermesStatus">
+                            <span class="status-dot offline"></span>
+                            <span class="text-muted">Desconectado</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="dashboard-card text-center">
+                        <i class="bi bi-volume-up text-primary fs-1 mb-3"></i>
+                        <h5 class="fw-bolder mb-2">TTS</h5>
+                        <div id="ttsStatus">
+                            <span class="status-dot offline"></span>
+                            <span class="text-muted">Indisponível</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Uptime & Services -->
+            <div class="row g-4 mb-4">
+                <div class="col-md-6">
+                    <div class="dashboard-card">
+                        <h5 class="fw-bolder mb-3"><i class="bi bi-clock-history me-2"></i>Uptime</h5>
+                        <span class="badge bg-gradient-primary-to-secondary uptime-badge" id="uptimeBadge">00:00:00</span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="dashboard-card">
+                        <h5 class="fw-bolder mb-3"><i class="bi bi-hdd-network me-2"></i>Serviços</h5>
+                        <div id="servicesList" class="small">
+                            <span class="text-muted">Verificando...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Audio Settings -->
+            <div class="row g-4 mb-4">
+                <div class="col-lg-6">
+                    <div class="dashboard-card">
+                        <h5 class="fw-bolder mb-3"><i class="bi bi-mic-fill me-2"></i>Microfone</h5>
+                        <div id="microphoneSelect" class="mb-3">
+                            <select class="form-select bg-dark text-light border-secondary" id="micSelect">
+                                <option value="">Carregando microfones...</option>
+                            </select>
+                        </div>
+                        <div id="micStatus" class="small"></div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="dashboard-card">
+                        <h5 class="fw-bolder mb-3"><i class="bi bi-volume-up-fill me-2"></i>Alto-falante</h5>
+                        <div id="speakerSelectWrap" class="mb-3">
+                            <select class="form-select bg-dark text-light border-secondary" id="spkSelect">
+                                <option value="">Carregando alto-falantes...</option>
+                            </select>
+                        </div>
+                        <div id="spkStatus" class="small"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Command Input & Response -->
+            <div class="row g-4 mb-4">
+                <div class="col-lg-8">
+                    <div class="dashboard-card">
+                        <h5 class="fw-bolder mb-3"><i class="bi bi-chat-dots me-2"></i>Comando Manual</h5>
+                        <div class="command-input-group">
+                            <input type="text" class="form-control rounded-4 bg-dark text-light border-secondary"
+                                   id="commandInput" placeholder="Digite um comando..."
+                                   onkeypress="if(event.key==='Enter')sendCommand()">
+                            <button class="btn btn-primary btn-lg send-btn rounded-pill" onclick="sendCommand()">
+                                <i class="bi bi-send-fill"></i>
+                            </button>
+                        </div>
+                        <div id="responseArea" class="response-text d-none">
+                            <small class="text-muted">Resposta:</small>
+                            <p class="mb-0 mt-2" id="responseText"></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="dashboard-card">
+                        <h5 class="fw-bolder mb-3"><i class="bi bi-activity me-2"></i>Ações Rápidas</h5>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-light rounded-4" onclick="quickCommand('Qual é a hora?')">
+                                <i class="bi bi-clock me-2"></i>Hora atual
+                            </button>
+                            <button class="btn btn-outline-light rounded-4" onclick="quickCommand('Pesquise sobre inteligencia artificial')">
+                                <i class="bi bi-search me-2"></i>Pesquisar
+                            </button>
+                            <button class="btn btn-outline-light rounded-4" onclick="quickCommand('Qual é a previsao do tempo?')">
+                                <i class="bi bi-sun me-2"></i>Previsao do tempo
+                            </button>
+                            <button class="btn btn-outline-light rounded-4" onclick="quickCommand('Onde estou?')">
+                                <i class="bi bi-geo-alt me-2"></i>Localizacao
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History -->
+            <div class="row g-4 mb-4">
+                <div class="col-12">
+                    <div class="dashboard-card" id="history">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bolder mb-0"><i class="bi bi-clock-history me-2"></i>Histórico de Conversas</h5>
+                            <div class="d-flex gap-2">
+                                <select class="form-select form-select-sm bg-dark text-light border-secondary" id="historyFilter" onchange="loadHistory()">
+                                    <option value="">Todos</option>
+                                    <option value="voice">Voz</option>
+                                    <option value="web">Web</option>
+                                </select>
+                                <button class="btn btn-sm btn-outline-light rounded-4" onclick="loadHistory()">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="history-table" id="historyBody">
+                            <div class="text-center text-muted">Carregando...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logs -->
+            <div class="row g-4">
+                <div class="col-12">
+                    <div class="dashboard-card" id="logs">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bolder mb-0"><i class="bi bi-terminal me-2"></i>Logs de Atividade</h5>
+                            <div class="d-flex gap-2">
+                                <select class="form-select form-select-sm bg-dark text-light border-secondary" id="logFilter" onchange="loadLogs()">
+                                    <option value="">Todos</option>
+                                    <option value="INFO">Info</option>
+                                    <option value="WARNING">Warning</option>
+                                    <option value="ERROR">Error</option>
+                                </select>
+                                <button class="btn btn-sm btn-outline-light rounded-4" onclick="loadLogs()">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="log-container" id="logContainer">
+                            <div class="text-center text-muted">Carregando logs...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-dark py-3 mt-auto">
+        <div class="container px-5">
+            <div class="row align-items-center justify-content-between flex-column flex-sm-row">
+                <div class="col-auto">
+                    <div class="small m-0 text-muted">&copy; 2025 Aurion — Assistente Pessoal Framework</div>
+                </div>
+                <div class="col-auto">
+                    <div class="small m-0 text-muted">Powered by Hermes Agent</div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/scripts.js"></script>
+    <script>
+        const API_BASE = '';
+        const POLL_INTERVAL = 5000;
+        const HISTORY_POLL_INTERVAL = 3000;
+        let _lastHistoryKey = '';
+        let _inConversation = false;
+
+        // ── Status ──
+        async function loadStatus() {
+            try {
+                const resp = await fetch(`${API_BASE}/api/status`);
+                const data = await resp.json();
+
+                // Listening
+                const ls = document.getElementById('listeningStatus');
+                if (data.listening) {
+                    ls.innerHTML = '<span class="status-dot online pulse-animation"></span><span class="text-success">Ativa</span>';
+                } else {
+                    ls.innerHTML = '<span class="status-dot offline"></span><span class="text-muted">Inativo</span>';
+                }
+
+                // Hermes
+                const hs = document.getElementById('hermesStatus');
+                if (data.hermes_connected) {
+                    hs.innerHTML = '<span class="status-dot online pulse-animation"></span><span class="text-success">Conectado</span>';
+                } else {
+                    hs.innerHTML = '<span class="status-dot offline"></span><span class="text-danger">Desconectado</span>';
+                }
+
+                // TTS
+                const ts = document.getElementById('ttsStatus');
+                if (data.tts_available) {
+                    ts.innerHTML = '<span class="status-dot online"></span><span class="text-success">Disponível</span>';
+                } else {
+                    ts.innerHTML = '<span class="status-dot offline"></span><span class="text-muted">Indisponível</span>';
+                }
+
+                // Uptime
+                const secs = Math.floor(data.uptime_seconds);
+                const h = String(Math.floor(secs / 3600)).padStart(2, '0');
+                const m = String(Math.floor((secs % 3600) / 60)).padStart(2, '0');
+                const s = String(secs % 60).padStart(2, '0');
+                document.getElementById('uptimeBadge').textContent = `${h}:${m}:${s}`;
+
+                // Services
+                const sl = document.getElementById('servicesList');
+                const servicesHtml = Object.entries(data.services || {})
+                    .map(([name, url]) => {
+                        const healthy = data.health?.[name] !== false;
+                        return `<div class="d-flex align-items-center my-2">
+                            <span class="status-dot ${healthy ? 'online' : 'offline'}"></span>
+                            <strong class="me-2 text-light">${name}</strong>
+                            <span class="text-muted">${url || 'N/A'}</span>
+                        </div>`;
+                    }).join('') || '<span class="text-muted">Nenhum serviço detectado</span>';
+                sl.innerHTML = servicesHtml;
+
+                if (data.in_conversation && !_inConversation) {
+                    loadHistory();
+                }
+                _inConversation = !!data.in_conversation;
+
+            } catch (e) {
+                console.error('Status load error:', e);
+            }
+        }
+
+        function parseServerTimestamp(ts) {
+            if (!ts) return null;
+            let normalized = ts.includes('T') ? ts : ts.replace(' ', 'T');
+            // SQLite grava UTC (CURRENT_TIMESTAMP) sem sufixo de fuso
+            if (!/([zZ]|[+-]\d{2}:?\d{2})$/.test(normalized)) {
+                normalized += 'Z';
+            }
+            const date = new Date(normalized);
+            return Number.isNaN(date.getTime()) ? null : date;
+        }
+
+        function formatTimestamp(ts) {
+            const date = parseServerTimestamp(ts);
+            if (!date) return ts || '—';
+            return date.toLocaleString('pt-BR', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+            });
+        }
+
+        function formatTime(ts) {
+            const date = parseServerTimestamp(ts);
+            if (!date) return ts || '—';
+            return date.toLocaleTimeString('pt-BR', {
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+            });
+        }
+
+        // ── History ──
+        async function loadHistory() {
+            const filter = document.getElementById('historyFilter').value;
+            try {
+                const params = new URLSearchParams({ limit: '50', _t: String(Date.now()) });
+                if (filter) params.set('source', filter);
+                const resp = await fetch(`${API_BASE}/api/conversations?${params}`, { cache: 'no-store' });
+                if (!resp.ok) {
+                    console.error('History load error: HTTP', resp.status);
+                    return;
+                }
+                const data = await resp.json();
+
+                const body = document.getElementById('historyBody');
+                if (!Array.isArray(data) || data.length === 0) {
+                    body.innerHTML = '<div class="text-center text-muted">Nenhuma conversa encontrada</div>';
+                    _lastHistoryKey = '';
+                    return;
+                }
+
+                const historyKey = data.map(c =>
+                    `${c.id}:${c.turn_count}:${c.messages?.length || 0}:${c.ended_at || 'open'}`
+                ).join('|');
+                const shouldScroll = historyKey !== _lastHistoryKey;
+                _lastHistoryKey = historyKey;
+
+                body.innerHTML = data.map(conv => {
+                    const ended = conv.ended_at ? formatTimestamp(conv.ended_at) : 'em andamento';
+                    const messagesHtml = (conv.messages || []).map(msg => {
+                        const who = msg.role === 'user' ? 'Você' : 'Aurion';
+                        const css = msg.role === 'user' ? 'user' : 'assistant';
+                        return `<div class="chat-bubble ${css}">
+                            <span class="chat-meta">${who} · ${formatTime(msg.timestamp)}</span>
+                            ${escapeHtml(msg.content)}
+                        </div>`;
+                    }).join('');
+
+                    return `<div class="conversation-card">
+                        <div class="conversation-header">
+                            <div>
+                                <strong class="text-light">Conversa #${conv.id}</strong>
+                                <span class="badge ${conv.source === 'voice' ? 'bg-info' : 'bg-secondary'} ms-2">${conv.source}</span>
+                                <span class="badge bg-dark border border-secondary ms-1">${conv.turn_count} turno(s)</span>
+                            </div>
+                            <div class="small text-muted text-end">
+                                <div><i class="bi bi-play-circle me-1"></i>${formatTimestamp(conv.started_at)}</div>
+                                <div><i class="bi bi-stop-circle me-1"></i>${ended}</div>
+                            </div>
+                        </div>
+                        <div class="conversation-messages">${messagesHtml}</div>
+                    </div>`;
+                }).join('');
+
+                if (shouldScroll) {
+                    body.scrollTop = 0;
+                }
+            } catch (e) {
+                console.error('History load error:', e);
+            }
+        }
+
+        // ── Logs ──
+        async function loadLogs() {
+            const filter = document.getElementById('logFilter').value;
+            try {
+                const params = new URLSearchParams();
+                if (filter) params.set('level', filter);
+                const resp = await fetch(`${API_BASE}/api/logs?${params}&limit=100`);
+                const data = await resp.json();
+
+                const container = document.getElementById('logContainer');
+                if (data.length === 0) {
+                    container.innerHTML = '<div class="text-center text-muted">Nenhum log encontrado</div>';
+                    return;
+                }
+
+                const ordered = [...data].reverse();
+                container.innerHTML = ordered.map(log => {
+                    const levelClass = `level-${log.level.toLowerCase()}`;
+                    return `<div class="log-entry">
+                        <span class="text-muted small">${formatTime(log.timestamp)}</span>
+                        <span class="${levelClass} fw-bold ms-2">[${log.level}]</span>
+                        <span class="text-info ms-1">${log.component}</span>
+                        <span class="text-light ms-2">${escapeHtml(log.message)}</span>
+                    </div>`;
+                }).join('');
+
+                container.scrollTop = container.scrollHeight;
+            } catch (e) {
+                console.error('Logs load error:', e);
+            }
+        }
+
+        // ── Commands ──
+        async function sendCommand() {
+            const input = document.getElementById('commandInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const btn = document.querySelector('.send-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+
+            try {
+                const resp = await fetch(`${API_BASE}/api/command`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ input_text: text, source: 'web' })
+                });
+                const data = await resp.json();
+
+                const respArea = document.getElementById('responseArea');
+                const respText = document.getElementById('responseText');
+                respArea.classList.remove('d-none');
+                respText.textContent = data.response || data.detail || 'Sem resposta';
+
+                // Use Web Speech API to read response
+                if ('speechSynthesis' in window && data.response) {
+                    const utterance = new SpeechSynthesisUtterance(data.response);
+                    utterance.lang = 'pt-BR';
+                    speechSynthesis.speak(utterance);
+                }
+
+                input.value = '';
+                loadHistory();
+            } catch (e) {
+                console.error('Command error:', e);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-send-fill"></i>';
+            }
+        }
+
+        function quickCommand(cmd) {
+            document.getElementById('commandInput').value = cmd;
+            sendCommand();
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // ── Polling ──
+        function startPolling() {
+            loadStatus();
+            loadHistory();
+            loadLogs();
+            loadAudioDevices();
+            setInterval(() => {
+                loadStatus();
+                loadHistory();
+                loadLogs();
+            }, POLL_INTERVAL);
+            setInterval(loadHistory, HISTORY_POLL_INTERVAL);
+        }
+
+        // ── Audio Settings ──
+        async function loadAudioDevices() {
+            try {
+                const resp = await fetch(`${API_BASE}/api/audio/devices`);
+                const data = await resp.json();
+
+                // Microphones
+                const micSelect = document.getElementById('micSelect');
+                const micStatus = document.getElementById('micStatus');
+                if (data.microphones && data.microphones.length > 0) {
+                    micSelect.innerHTML = '<option value="">Selecionar microfone...</option>' +
+                        data.microphones.map(m =>
+                            `<option value="${m.index}">${escapeHtml(m.name)} (${m.channels} canal(is), ${Math.round(m.sample_rate / 1000)}kHz)${m.is_default ? ' [padrão do sistema]' : ''}</option>`
+                        ).join('');
+                    if (data.selected_microphone_index != null) {
+                        micSelect.value = String(data.selected_microphone_index);
+                    }
+                    micSelect.onchange = async function() {
+                        if (this.value !== '') {
+                            await setAudioDevice('microphone', parseInt(this.value));
+                        }
+                    };
+                    const activeMic = data.microphones.find(m => m.index === data.selected_microphone_index);
+                    micStatus.innerHTML = activeMic
+                        ? `<span class="text-success"><i class="bi bi-check-circle"></i> Em uso: ${escapeHtml(activeMic.name)}</span>`
+                        : `<span class="text-success"><i class="bi bi-check-circle"></i> ${data.microphones.length} microfone(s) detectado(s)</span>`;
+                } else {
+                    micSelect.innerHTML = '<option value="">Nenhum microfone detectado</option>';
+                    micStatus.innerHTML = '<span class="text-warning"><i class="bi bi-exclamation-circle"></i> Nenhum microfone encontrado</span>';
+                }
+
+                // Speakers
+                const spkSelect = document.getElementById('spkSelect');
+                const spkStatus = document.getElementById('spkStatus');
+                if (data.speakers && data.speakers.length > 0) {
+                    spkSelect.innerHTML = '<option value="">Selecionar alto-falante...</option>' +
+                        data.speakers.map(s =>
+                            `<option value="${s.index}">${escapeHtml(s.name)} (${s.channels} canal(is), ${Math.round(s.sample_rate / 1000)}kHz)${s.is_default ? ' [padrão do sistema]' : ''}</option>`
+                        ).join('');
+                    if (data.selected_speaker_index != null) {
+                        spkSelect.value = String(data.selected_speaker_index);
+                    }
+                    spkSelect.onchange = async function() {
+                        if (this.value !== '') {
+                            await setAudioDevice('speaker', parseInt(this.value));
+                        }
+                    };
+                    const activeSpk = data.speakers.find(s => s.index === data.selected_speaker_index);
+                    spkStatus.innerHTML = activeSpk
+                        ? `<span class="text-success"><i class="bi bi-check-circle"></i> Em uso: ${escapeHtml(activeSpk.name)}</span>`
+                        : `<span class="text-success"><i class="bi bi-check-circle"></i> ${data.speakers.length} alto-falante(s) detectado(s)</span>`;
+                } else {
+                    spkSelect.innerHTML = '<option value="">Nenhum alto-falante detectado</option>';
+                    spkStatus.innerHTML = '<span class="text-warning"><i class="bi bi-exclamation-circle"></i> Nenhum alto-falante encontrado</span>';
+                }
+            } catch (e) {
+                console.error('Audio devices load error:', e);
+                document.getElementById('micStatus').innerHTML = '<span class="text-danger">Erro ao carregar dispositivos</span>';
+                document.getElementById('spkStatus').innerHTML = '<span class="text-danger">Erro ao carregar dispositivos</span>';
+            }
+        }
+
+        async function setAudioDevice(deviceType, deviceIndex) {
+            try {
+                const resp = await fetch(`${API_BASE}/api/audio/${deviceType}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ device_type: deviceType, device_index: deviceIndex })
+                });
+                const data = await resp.json();
+                if (data.status === 'ok') {
+                    console.log(`${deviceType} alterado para índice ${deviceIndex}`);
+                    const statusEl = deviceType === 'microphone' ? document.getElementById('micStatus') : document.getElementById('spkStatus');
+                    statusEl.innerHTML = `<span class="text-success"><i class="bi bi-check-circle"></i> ${deviceType === 'microphone' ? 'Microfone' : 'Alto-falante'} alterado com sucesso</span>`;
+                }
+            } catch (e) {
+                console.error(`Error setting ${deviceType}:`, e);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', startPolling);
+    </script>
+</body>
+</html>
